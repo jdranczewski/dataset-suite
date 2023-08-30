@@ -15,7 +15,6 @@ import re
 import pickle
 import gzip
 from glob import glob as _glob
-from matplotlib.pyplot import cm
 
 
 def folders(folder="", rel_current=True):
@@ -106,7 +105,18 @@ def sort_by(files, pattern):
     files.sort(key=lambda x:_sort_key(x, pattern))
 
 
-def colours(values, cmap=cm.viridis):
+def colours(values, cmap=None):
+    # Check if matplotlib needs to be imported.
+    # We only do this here, as this takes a bit of time, so it's silly to do this
+    # every time the full library is imported.
+    if 'cm' not in globals():
+        global cm
+        from matplotlib import cm
+
+    # Default colourmap
+    if cmap is None:
+        cmap = cm.viridis
+
     if len(values) == 1:
         return cmap((0,))
     return cmap((values-values[0])/(values[-1]-values[0]))
