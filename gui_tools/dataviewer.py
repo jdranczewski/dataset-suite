@@ -63,6 +63,11 @@ class DatalistLevel(Level):
         label.setText(self.name)
         layout.addWidget(label, 0, 0)
 
+        label = QtWidgets.QLabel()
+        label.setText(str(getattr(self.datalist, 'metadata', '')))
+        label.setWordWrap(True)
+        layout.addWidget(label, 1, 0, 1, 2)
+
         self.dropdown = QtWidgets.QComboBox()
 
         if isinstance(self.datalist[0], ds.dataset):
@@ -106,6 +111,11 @@ class PlotLevel(Level):
 
     def make_layout(self):
         layout = QtWidgets.QVBoxLayout()
+
+        label = QtWidgets.QLabel()
+        label.setText(str(getattr(self.dataset, 'metadata', '')))
+        label.setWordWrap(True)
+        layout.addWidget(label)
 
         layout.addWidget(self.make_plot())
 
@@ -164,4 +174,4 @@ if __name__ == "__main__":
     window = DataViewer(filename)
     window.show()
 
-    app.exec_()
+    app.exec()

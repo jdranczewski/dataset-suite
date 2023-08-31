@@ -1,2 +1,2 @@
 @echo off
-python csv_helper.py %*
+python %0\..\csv_helper.py %*

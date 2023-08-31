@@ -1,2 +1,2 @@
 @echo off
-python sem_helper.py %*
+python %0\..\sem_helper.py %*

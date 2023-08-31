@@ -1,2 +1,2 @@
 @echo off
-python dataviewer.py %*
+python %0\..\dataviewer.py %*
