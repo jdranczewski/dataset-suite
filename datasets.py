@@ -37,7 +37,7 @@ def prefixes(folder, split, yes=[], no=[]):
     name, so act as filters.
     """
     files = os.listdir(folder)
-    for s in yes:
+    for s in yes + [split]:
         files = [x for x in files if s in x]
     for s in no:
         files = [x for x in files if s not in x]

@@ -16,10 +16,10 @@ class Control(QtWidgets.QWidget):
         self.label.setText(name)
         self.layout.addWidget(self.label)
 
-        self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.slider.setMinimum(0)
         self.slider.setMaximum(len(self.axis_values)-1)
-        self.slider.setTickPosition(self.slider.TicksBelow)
+        self.slider.setTickPosition(self.slider.TickPosition.TicksBelow)
         self.layout.addWidget(self.slider)
         self.valueChanged = self.slider.valueChanged
 
@@ -29,6 +29,7 @@ class Control(QtWidgets.QWidget):
         self.layout.addWidget(self.value_label)
 
         self.slider.valueChanged.connect(self._update_label)
+        self.valueChanged = self.slider.valueChanged
 
     def _update_label(self, s_value):
         self.value_label.setText(self.format.format(self.axis_values[s_value]))
