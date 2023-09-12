@@ -2,7 +2,9 @@ from dataprocessor import DataProcessor
 import datasets1 as ds
 import numpy as np
 import scipy
-from scipy import signal
+from scipy import signal, interpolate
+from lmfit import Model
+from lmfit.models import PolynomialModel
 
 
 class SpectraProcessor(DataProcessor):
@@ -43,6 +45,101 @@ class FindPeaksProcessor(DataProcessor):
                 self.run_next(dataset)
             
 
+class PL_Subtractor2:
+    def __init__(self):
+        pass
+
+    def remove_peaks(self, I):
+        I = I.copy()
+        for repeat in range(10):
+            pi = np.nanargmax(I)
+            
+            for i in range(pi, len(I)):
+                if I[i] < I[pi]/2:
+                    break
+            i -= 1
+            for j in range(pi, 0, -1):
+                if I[j] < I[pi]/2:
+                    break
+            fwhm = i-j
+            if fwhm > 20:
+                break
+            
+            I[pi-3*fwhm:pi+3*fwhm] = np.nan
+        return I
+
+    def set_pl_from_datalist(self, datalist, window=71):
+        avg_pl = np.nanmean([self.remove_peaks(d.take_raw(power=-1)) for d in datalist], axis=0)
+        self.diff = np.convolve(avg_pl, [1/window]*window, mode='same') - avg_pl
+        self._diff_wl = datalist[0].wl
+        self._avg_pl = avg_pl
+        
+    def plot_pl_diff(self, ax):
+        ax.plot(self._diff_wl, self._avg_pl)
+        ax.plot(self._diff_wl, self._avg_pl + self.diff)
+        ax.plot(self._diff_wl, self.diff)
+
+    def find_boundaries(self, I, pi=None):
+        """
+        Establish the boundaries used for fitting and subtraction.
+        Arguments should be a clear example of a peak (preferably at the highest power).
+        """
+
+        # Find the peak
+        if pi is None:
+            self.pi = pi = np.argmax(I)
+
+        # Find the rough fwhm
+        for i in range(pi, len(I)):
+            if I[i] < I[pi]/2:
+                break
+        i -= 1
+        for j in range(pi, 0, -1):
+            if I[j] < I[pi]/2:
+                break
+        self.fwhm = i-j
+        
+        self.A = pi-3*self.fwhm-60
+        self.B = pi-3*self.fwhm
+        self.C = pi+3*self.fwhm
+        self.D = pi+3*self.fwhm+60
+    
+    def subtract_pl(self, wl, I):
+        model, params = self.get_model(wl, I)
+        
+        x = wl[self.B:self.C]
+        return x, I[self.B:self.C] - model.eval(x=x, params=params)
+    
+    def get_model(self, wl, I):
+        x = np.concatenate((wl[self.A:self.B], wl[self.C:self.D]))
+        y = np.concatenate((I[self.A:self.B], I[self.C:self.D]))
+
+        diff_interp = interpolate.interp1d(self._diff_wl, self.diff, bounds_error=False, fill_value=0)
+        diff_fast = diff_interp(x)
+        
+        def absorption_fast(x, mult=1):
+            # This ignores x, as it will always be the same during fitting
+            return diff_fast*mult
+        def absorption(x, mult=1):
+            # This allows for arbitrary x
+            diff = diff_interp(x)
+            return diff*mult
+        
+        rm = PolynomialModel(5) + Model(absorption)
+        m = PolynomialModel(5) + Model(absorption_fast)
+        
+        params = m.make_params(c0=np.mean(y), c1=0, c2=0, c3=0, c4=0, c5=0, mult=1)
+        r = m.fit(y, x=x, params=params)
+        
+        return rm, r.params
+
+
+class MakePLSProcessor(DataProcessor):
+    def run(self, dataset):
+        self.storage['pls'] = pls = PL_Subtractor2()
+        pls.set_pl_from_datalist(dataset)
+        self.run_next(dataset)
+
 class PLSubProcessor(DataProcessor):
     def run(self, dataset):
         pls = self.storage['pls']
@@ -74,6 +171,11 @@ class DummySubProcessor(DataProcessor):
 #             self.storage['ax'].loglog() 
         self.run_next(dataset)
 
+class DividePowerProcessor(DataProcessor):
+    def run(self, dataset):
+        self.storage['power'] = dataset.power/100.
+        self.run_next(dataset)
+
 class ConvertPowerProcessor(DataProcessor):
     def __init__(self, pipeline=None, storage=None):
         percent, pW = np.genfromtxt(storage['power_file'], delimiter=',', unpack=True)
@@ -84,7 +186,8 @@ class ConvertPowerProcessor(DataProcessor):
         super().__init__(pipeline, storage)
 
     def run(self, dataset):
-        self.storage['power_values'] = self.p_to_power(dataset.power)
+        power = self.storage.get('power', dataset.power)
+        self.storage['power_values'] = self.p_to_power(power)
         self.run_next(dataset)
 
 # Trying to figure out the inflection point thing

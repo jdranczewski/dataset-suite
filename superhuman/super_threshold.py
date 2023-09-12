@@ -29,9 +29,11 @@ class SuperPeakfinder(superhuman.SuperWidget):
         self.cut_info.setText(str(self.dataset.cut))
         layout.addWidget(self.cut_info, 1, 0)
         self.threshold_info = QtWidgets.QLabel()
-        self.threshold_info.setAlignment(QtCore.Qt.AlignRight)
+        self.threshold_info.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         layout.addWidget(self.threshold_info, 1, 1)
         self.comment = QtWidgets.QLineEdit()
+        if self.params['comment'] is not None:
+            self.comment.setText(self.params['comment'])
         layout.addWidget(self.comment, 2, 0, 1, 2)
 
         self.plots = {
