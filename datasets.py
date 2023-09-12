@@ -264,3 +264,60 @@ class datalist:
     
     def __repr__(self):
         return str(self._datasets)
+    
+
+class datadict:
+    def __init__(self, name, cut=None):
+        self._name = name
+        self._dict = {}
+        if cut is None:
+            cut = {}
+        self._cut = cut
+    
+    def add_cut(self, key, value):
+        self._cut[key] = value
+        for element in self:
+            try:
+                self._dict[element].add_cut(key, value)
+            except AttributeError:
+                pass
+    
+    def save(self, filename):
+        with gzip.open(filename, 'wb') as f:
+            pickle.dump(self, f)
+    
+    @property
+    def name(self):
+        return self._name
+    
+    @property
+    def dict(self):
+        return self._dict
+    
+    @property
+    def cut(self):
+        return self._cut
+    
+    def __setitem__(self, key, value):
+        try:
+            value.add_cut(self._name, key)
+        except AttributeError:
+            pass
+
+        self._dict[key] = value
+
+    def __iter__(self):
+        for key in self._dict:
+            yield key
+    
+    def __getitem__(self, key):
+        return self._dict[key]
+    
+    def __contains__(self, item):
+        return item in self._dict
+    
+    def keys(self):
+        return self._dict.keys()
+    
+    def __repr__(self):
+        return "datadict({}: {})".format(self._name, ", ".join(self._dict.keys()))
