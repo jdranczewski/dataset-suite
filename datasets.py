@@ -154,6 +154,7 @@ class dataset():
         if cut is None:
             cut = {}
         self._cut = cut
+        self.metadata = {}
         
     def take(self, **i):
         s_raw = self._raw
@@ -225,6 +226,7 @@ class datalist:
         if cut is None:
             cut = {}
         self._cut = cut
+        self.metadata = {}
     
     def append(self, ds, value):
         ds.add_cut(self._axes[0], value)
@@ -273,6 +275,7 @@ class datadict:
         if cut is None:
             cut = {}
         self._cut = cut
+        self.metadata = {}
     
     def add_cut(self, key, value):
         self._cut[key] = value
