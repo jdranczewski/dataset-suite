@@ -127,7 +127,7 @@ def map_axes(data, **axes):
     Helper function for figuring out how the axes you have map to the data.
     data is the ndarray, and then you pass your axes in any order as keyword arguments.
     """
-    data = np.array(data)
+    data = np.asarray(data)
     shape = data.shape
     for s in shape:
         print(s, [key for key in axes if len(axes[key])==s])
@@ -143,13 +143,13 @@ class dataset():
     A container for data with labelled axes.
     """
     def __init__(self, data, cut=None, **axes):
-        self._raw = np.array(data)
+        self._raw = np.asarray(data)
         if len(axes) != self._raw.ndim:
             raise IndexError("The number of provided axes does not match the dataset.")
         for i, key in enumerate(axes):
             if self._raw.shape[i] != len(axes[key]):
                 raise IndexError("The shape of the provided axes does not match the dataset.")
-            setattr(self, key, np.array(axes[key]))
+            setattr(self, key, np.asarray(axes[key]))
         self._axes = list(axes.keys())
         if cut is None:
             cut = {}
@@ -189,9 +189,12 @@ class dataset():
     
     def axis(self, ax):
         return getattr(self, ax)
+    
+    def astype(self, _type):
+        return dataset(self._raw.astype(_type), cut=self._cut, **self.ax_dict)
 
-    def save(self, filename):
-        with gzip.open(filename, 'wb') as f:
+    def save(self, filename, compress=6):
+        with gzip.open(filename, 'wb', compresslevel=compress) as f:
             pickle.dump(self, f)
     
     @property
@@ -238,8 +241,8 @@ class datalist:
         for ds in self:
             ds.add_cut(key, value)
     
-    def save(self, filename):
-        with gzip.open(filename, 'wb') as f:
+    def save(self, filename, compress=6):
+        with gzip.open(filename, 'wb', compresslevel=compress) as f:
             pickle.dump(self, f)
 
     @property
@@ -285,8 +288,8 @@ class datadict:
             except AttributeError:
                 pass
     
-    def save(self, filename):
-        with gzip.open(filename, 'wb') as f:
+    def save(self, filename, compress=6):
+        with gzip.open(filename, 'wb', compresslevel=compress) as f:
             pickle.dump(self, f)
     
     @property
