@@ -105,7 +105,7 @@ def sort_by(files, pattern):
     files.sort(key=lambda x:_sort_key(x, pattern))
 
 
-def colours(values, cmap=None):
+def colours(values, cmap=None, minmax=None):
     # Check if matplotlib needs to be imported.
     # We only do this here, as this takes a bit of time, so it's silly to do this
     # every time the full library is imported.
@@ -117,9 +117,14 @@ def colours(values, cmap=None):
     if cmap is None:
         cmap = cm.viridis
 
+    if minmax is None:
+        a, b = np.amin(values), np.amax(values)
+    else:
+        a, b = minmax
+
     if len(values) == 1:
         return cmap((0,))
-    return cmap((values-values[0])/(values[-1]-values[0]))
+    return cmap((values-a)/(b-a))
 
 
 def map_axes(data, **axes):
