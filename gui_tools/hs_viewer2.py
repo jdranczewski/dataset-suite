@@ -16,6 +16,7 @@ class HSView(file_viewer.FileView):
     def define_params(self):
         pzp.param.readout(self, 'wavelength', True, '{:.2f}nm')(None)
         pzp.param.checkbox(self, 'overlay', 1)(None)
+        pzp.param.checkbox(self, 'suppress_sides', 0)(None)
 
     def custom_layout(self):
         layout = QtWidgets.QGridLayout()
@@ -59,6 +60,7 @@ class HSView(file_viewer.FileView):
         plot = self.gl.addPlot(1, 1)
         self._plots.append(plot)
         self._lines.append(plot.plot((0,), (0,)))
+        self._lines.append(plot.plot((0,), (0,), pen=(255, 0, 0, 100)))
         plot.setXLink(self._plots[1])
         self._controls['wl_line_2'] = pg.InfiniteLine(0, 90, pen=(255, 0, 0, 100))
         plot.addItem(self._controls['wl_line_2'])
@@ -80,6 +82,7 @@ class HSView(file_viewer.FileView):
         self._controls['target'].sigPositionChanged.connect(self._target_moved)
         self._controls['wl_line'].sigPositionChanged.connect(self._wl_line_moved)
         self.params['overlay'].changed.connect(self._transform_lines)
+        self.params['suppress_sides'].changed.connect(lambda: self._wl_line_moved(self._controls['wl_line']))
 
         return layout
     
@@ -91,6 +94,7 @@ class HSView(file_viewer.FileView):
         self._transform_lines()
         self._target_moved(self._controls['target'])
         self._wl_line_moved(self._controls['wl_line'])
+        self._lines[1].setData(np.amax(np.amax(self._data.raw, 0), 0))
 
     def _target_moved(self, target):
         x, y = target.pos()
@@ -105,7 +109,12 @@ class HSView(file_viewer.FileView):
         wl = int(line.value())
         self._controls['wl_line_2'].setValue(wl)
         self.params['wavelength'].set_value(self._data.wl[wl])
-        self._images[2].setImage(self._data.take(wl=wl).raw)
+        counts = self._data.take(wl=wl).raw
+        if self.params['suppress_sides'].value:
+            diff = np.mean(self._data.raw[:, :, wl:wl+10], 2) - np.mean(self._data.raw[:, :, wl-10:wl], 2)
+            self._images[2].setImage(np.exp(-0.001*diff**2) * counts)
+        else:
+            self._images[2].setImage(counts)
 
 
     def _get_coordinates(self):
