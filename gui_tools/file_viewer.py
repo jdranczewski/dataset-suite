@@ -31,6 +31,7 @@ class FileButton(QtWidgets.QRadioButton):
 class FilesViewer(QtWidgets.QWidget):
     def __init__(self, filename, viewer=FileView, *args, **kwargs):
         super().__init__(None, *args, **kwargs)
+        self.setWindowTitle(filename)
         self.file_view = viewer(filename)
         self.setLayout(self.make_layout(filename))
 
@@ -43,17 +44,12 @@ class FilesViewer(QtWidgets.QWidget):
         scroll_widget = QtWidgets.QWidget()
         scroll_layout = QtWidgets.QVBoxLayout()
 
-        folder = os.path.dirname(filename)
-        extension = filename.split('.')[-1]
-        if not len(folder):
-            folder = '.'
-        for file in os.listdir(folder):
-            if '.' + extension in file:
-                button = FileButton(folder, file)
-                scroll_layout.addWidget(button)
-                button.clicked.connect(self._folder_button_clicked)
-                if button.path == filename:
-                    button.click()
+        for folder, file in self._list_files(filename):
+            button = FileButton(folder, file)
+            scroll_layout.addWidget(button)
+            button.clicked.connect(self._folder_button_clicked)
+            if button.path == filename:
+                button.click()
 
         scroll_widget.setLayout(scroll_layout)
         scroll_container.setWidget(scroll_widget)
@@ -69,7 +65,17 @@ class FilesViewer(QtWidgets.QWidget):
 
         return layout
     
+    def _list_files(self, filename):
+        folder = os.path.dirname(filename)
+        extension = filename.split('.')[-1]
+        if not len(folder):
+            folder = '.'
+        for file in os.listdir(folder):
+            if '.' + extension in file:
+                yield folder, file
+    
     def _folder_button_clicked(self):
+        self.setWindowTitle(self.sender().filename)
         self.file_view.set_file(self.sender().path)
     
 if __name__ == "__main__":

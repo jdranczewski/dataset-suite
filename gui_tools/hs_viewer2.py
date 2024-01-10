@@ -5,6 +5,7 @@ from qtpy import QtWidgets
 import pyqtgraph as pg
 import datasets as ds
 import numpy as np
+from scipy import signal
 
 import sys, os
 
@@ -61,6 +62,8 @@ class HSView(file_viewer.FileView):
         self._plots.append(plot)
         self._lines.append(plot.plot((0,), (0,)))
         self._lines.append(plot.plot((0,), (0,), pen=(255, 0, 0, 100)))
+        self._lines.append(pg.ScatterPlotItem())
+        plot.addItem(self._lines[-1])
         plot.setXLink(self._plots[1])
         self._controls['wl_line_2'] = pg.InfiniteLine(0, 90, pen=(255, 0, 0, 100))
         plot.addItem(self._controls['wl_line_2'])
@@ -103,7 +106,10 @@ class HSView(file_viewer.FileView):
         self._controls['space_line'].setValue(x + .5)
         self._controls['space_line_2'].setValue(y + .5)
         self._images[1].setImage(self._data.take(pos=x).raw)
-        self._lines[0].setData(self._data.take(pos=x).take(y=y).raw)
+        counts = self._data.take(pos=x).take(y=y).raw
+        self._lines[0].setData(counts)
+        peaks, _ = signal.find_peaks(counts, prominence=50)
+        self._lines[2].setData(peaks, counts[peaks])
 
     def _wl_line_moved(self, line):
         wl = int(line.value())
