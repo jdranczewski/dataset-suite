@@ -192,7 +192,9 @@ class dataset():
             s_raw = np.moveaxis(s_raw, self._axes.index(key), 0)[i[key]]
             cut[key] = self.axis(key)[i[key]]
             new_axes.pop(key)
-        return dataset(s_raw, cut=cut, **new_axes)
+        new_data = dataset(s_raw, cut=cut, **new_axes)
+        new_data.metadata = self.metadata
+        return new_data
     
     def take_raw(self, **i):
         s_raw = self._raw
@@ -203,7 +205,9 @@ class dataset():
     def take_sum(self, axis):
         new_axes = self.ax_dict
         new_axes.pop(axis)
-        return dataset(np.sum(self._raw, axis=self._axes.index(axis)), **new_axes)
+        new_data = dataset(np.sum(self._raw, axis=self._axes.index(axis)), **new_axes)
+        new_data.metadata = self.metadata
+        return new_data
     
     def expand(self, new_axis, value):
         return dataset(np.expand_dims(self._raw, axis=0),
@@ -219,7 +223,9 @@ class dataset():
         return getattr(self, ax)
     
     def astype(self, _type):
-        return dataset(self._raw.astype(_type), cut=self._cut, **self.ax_dict)
+        new_data = dataset(self._raw.astype(_type), cut=self._cut, **self.ax_dict)
+        new_data.metadata = self.metadata
+        return new_data
 
     def save(self, filename, compress=6):
         with gzip.open(filename, 'wb', compresslevel=compress) as f:
