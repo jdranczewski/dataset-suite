@@ -188,18 +188,22 @@ class dataset():
         s_raw = self._raw
         cut = self._cut
         new_axes = self.ax_dict
+        new_ax_names = self.axes.copy()
         for key in i:
-            s_raw = np.moveaxis(s_raw, self._axes.index(key), 0)[i[key]]
+            s_raw = np.moveaxis(s_raw, new_ax_names.index(key), 0)[i[key]]
             cut[key] = self.axis(key)[i[key]]
             new_axes.pop(key)
+            new_ax_names.remove(key)
         new_data = dataset(s_raw, cut=cut, **new_axes)
         new_data.metadata = self.metadata
         return new_data
     
     def take_raw(self, **i):
         s_raw = self._raw
+        new_ax_names = self.axes.copy()
         for key in i:
-            s_raw = np.moveaxis(s_raw, self._axes.index(key), 0)[i[key]]
+            s_raw = np.moveaxis(s_raw, new_ax_names.index(key), 0)[i[key]]
+            new_ax_names.remove(key)
         return s_raw
     
     def take_sum(self, axis):
