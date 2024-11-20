@@ -83,7 +83,7 @@ def get_pg(row=1, col=1):
     return w, ax
 
 
-def get_pg_controls(row=1, col=1, **controls):
+def get_pg_controls(row=1, col=1, left_controls=False, **controls):
     """
     Produce a row x col grid of PlotItems with Control sliders below.
 
@@ -106,15 +106,21 @@ def get_pg_controls(row=1, col=1, **controls):
     w_plot, ax = get_pg(row, col)
 
     w = QtWidgets.QWidget()
-    layout = QtWidgets.QVBoxLayout()
+    layout = QtWidgets.QGridLayout()
     w.setLayout(layout)
-    layout.addWidget(w_plot)
+    layout.addWidget(w_plot, 0, 1 if left_controls else 0)
 
     cdict = {}
+    control_layout = QtWidgets.QVBoxLayout()
     for control in controls:
         cw = Control(control, controls[control])
-        layout.addWidget(cw)
+        control_layout.addWidget(cw)
         cdict[control] = cw
+    layout.addLayout(
+        control_layout,
+        0 if left_controls else 1,
+        0
+    )
     
     return w, w_plot, ax, cdict
 
