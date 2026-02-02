@@ -45,7 +45,7 @@ class MetaView(file_viewer.FileView):
         self.lines['time_taken'] = self.plots['time_taken'].plot([], [])
 
         return layout
-    
+
     def set_file(self, filename):
         files = ds.glob(filename + '*_meta.ds')
         tracked_vals = {
@@ -59,7 +59,7 @@ class MetaView(file_viewer.FileView):
             data = ds.load(file)
             for key in tracked_vals.keys():
                 tracked_vals[key].append(data[key])
-        
+
         for key in tracked_vals.keys():
             self.lines[key].setData(tracked_vals[key])
 
@@ -87,7 +87,7 @@ class MetaView2(file_viewer.FileView):
             infinite lines ✓
             progress bar ✓
             remove labels ✓
-            mat file support 
+            mat file support
         """
         layout = QtWidgets.QGridLayout()
 
@@ -145,7 +145,7 @@ class MetaView2(file_viewer.FileView):
         self.slider.valueChanged.connect(self._update_i)
 
         return layout
-    
+
     def set_file(self, filename):
         files = ds.glob(filename + '[0-9][0-9][0-9][0-9]_meta.*')
         spectra = []
@@ -169,9 +169,11 @@ class MetaView2(file_viewer.FileView):
             spectra.append(data['reference_spectra'])
             full.append(data['full_power_spectrum'])
             bg.append(data['background'])
-            powers.append(data['powers'])
+            if "powers" in data:
+                powers.append(data['powers'])
             labels.append(data['labels'])
-            ref_powers.append(data['reference_powers'])
+            if "reference_powers" in data:
+                ref_powers.append(data['reference_powers'])
             fp.append(data['full_power'])
             fpf.append(data['full_power_final'])
             stage_pos.append(data['stage_pos'])
@@ -179,20 +181,25 @@ class MetaView2(file_viewer.FileView):
         self.refs = np.append(self.refs, np.asarray(full)[:, None, :, :], 1)
         self.refs = np.append(self.refs, np.asarray(bg)[:, None, :, :], 1)
 
-        powers = np.concatenate(powers)
         labels = np.concatenate(labels)
-        ref_powers = np.asarray(ref_powers)
-        ref_powers = np.append(ref_powers, np.asarray(fp)[:, None], 1)
-        ref_powers = np.append(ref_powers, np.asarray(fpf)[:, None], 1)
-        x = np.arange(len(powers))
-        for i in range(12):
-            mask = labels == i
-            # print(labels, mask)
-            self.in_lines[i].setData(x[mask], powers[mask])
-            double_up = lambda arr: [arr[i//2] for i in range(len(arr)*2)]
-            self.in_ref[i].setData(
-                double_up(np.arange(len(ref_powers)+1)*1000)[1:-1],
-                double_up(ref_powers[:, i])
+        if len(powers):
+            powers = np.concatenate(powers)
+            ref_powers = np.asarray(ref_powers)
+            ref_powers = np.append(ref_powers, np.asarray(fp)[:, None], 1)
+            ref_powers = np.append(ref_powers, np.asarray(fpf)[:, None], 1)
+            x = np.arange(len(powers))
+            for i in range(12):
+                # mask = labels == i
+                # print(labels, mask)
+                # self.in_lines[i].setData(x[mask], powers[mask])
+                double_up = lambda arr: [arr[i//2] for i in range(len(arr)*2)]
+                self.in_ref[i].setData(
+                    double_up(np.arange(len(ref_powers)+1)*1000)[1:-1],
+                    double_up(ref_powers[:, i])
+                )
+            self.plots[0][1].setYRange(
+                np.amin([np.amin(powers), np.amin(ref_powers)]),
+                np.amax([np.amax(powers), np.amax(ref_powers)])
             )
         self.in_ref[12].setData(stage_pos)
 
@@ -200,10 +207,6 @@ class MetaView2(file_viewer.FileView):
             self.out_lines[i].setData(np.sum(np.sum(self.refs[:, i], 1), 1))
         all_out = np.sum(np.sum(self.refs, 2), 2)[:, :-1]
         self.plots[0][2].setYRange(np.amin(all_out), np.amax(all_out))
-        self.plots[0][1].setYRange(
-            np.amin([np.amin(powers), np.amin(ref_powers)]),
-            np.amax([np.amax(powers), np.amax(ref_powers)])
-        )
 
         self.slider.setMaximum(len(files)-1)
         self._update_i(0)
@@ -243,6 +246,19 @@ class FilesViewer(file_viewer.FilesViewer):
             yield folder, name[crop:]
 
 
+class FilesViewerNew(FilesViewer):
+    def _list_files(self, filename):
+        search_folder = os.path.abspath(os.path.join(filename, "../.."))
+        files = ds.glob(f"{search_folder}/**/*_meta.*")
+
+        prefixes = list(set([x[:-10 - len(x.split('.')[1])] for x in files]))
+        prefixes.sort()
+
+        crop = len(search_folder)+1
+        for name in prefixes:
+            yield search_folder, name[crop:]
+
+
 if __name__ == "__main__":
     try:
         filename = sys.argv[1]
@@ -250,6 +266,6 @@ if __name__ == "__main__":
         filename = 'test.hs'
 
     app = QtWidgets.QApplication([])
-    main = FilesViewer(filename, MetaView2)
+    main = FilesViewerNew(filename, MetaView2)
     main.show()
     app.exec()
