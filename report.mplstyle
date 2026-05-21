@@ -1,0 +1,28 @@
+axes.titlesize: 9
+axes.labelsize: 9
+font.size: 9
+xtick.labelsize: 7
+ytick.labelsize: 7
+legend.fontsize: 7
+figure.titlesize: 9
+
+figure.constrained_layout.use: True
+
+lines.linewidth: 1.4
+lines.markersize : 3
+
+axes.grid: True
+grid.alpha: .2
+axes.axisbelow: line
+xtick.direction: inout
+ytick.direction: inout
+
+axes.prop_cycle: cycler(color=["#4e79a7","#f28e2b","#e15759","#76b7b2","#59a14f","#edc948","#b07aa1","#ff9da7","#9c755f","#bab0ac"])
+
+font.family: sans-serif
+font.sans-serif: Arial
+pdf.fonttype: 42
+svg.fonttype: none
+
+savefig.dpi: 300
+savefig.facecolor: none
