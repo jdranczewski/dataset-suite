@@ -32,6 +32,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from collections import abc
 import numpy as np
 import os
 import re
@@ -365,3 +366,40 @@ class datadict:
     
     def __repr__(self):
         return "datadict({}: {})".format(self._name, ", ".join(self._dict.keys()))
+
+
+# Plotting a datadict
+def print_value(value, offset=0):
+    """
+    Print a value with standard formatting. Used in ``print_dict``.
+    """
+    if isinstance(value, np.ndarray):
+        if len(value.shape):
+            print(f"array({value.shape})", end="")
+        else:
+            print(value, end="")
+    elif isinstance(value, datadict) or isinstance(value, dict):
+        print("")
+        print_dict(value, offset+1)
+    elif isinstance(value, tuple) or isinstance(value, list):
+        print("(", end="")
+        for subvalue in value:
+            print_value(subvalue, offset)
+            print(", ", end="")
+        print(")", end="")
+    else:
+        rep = str(value)
+        if len(rep) > 60:
+            rep = f"{rep[:29]}..{rep[-29:]}"
+        print(rep, end="")
+
+def print_dict(data:dict, offset=0):
+    """
+    Print a nicely formatted view of the data in a nested
+    dictionary/datadict.
+    """
+    for key in data:
+        print(f"{offset*4*' '}{key}:  ", end="")
+        value = data[key]
+        print_value(value, offset)
+        print("")
