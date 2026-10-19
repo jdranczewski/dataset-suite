@@ -1,7 +1,8 @@
 import puzzlepiece as pzp
-from qtpy import QtWidgets
+from qtpy import QtWidgets, QtCore
 
 import os, sys
+from functools import partial
 
 class PretendPuzzle:
     debug = True
@@ -240,8 +241,8 @@ class ManyFilesViewer(QtWidgets.QWidget):
             event.acceptProposedAction()
 
     def dropEvent(self, event):
-        self.add_file(event.mimeData().urls()[0].path())
         event.acceptProposedAction()
+        QtCore.QTimer.singleShot(0, partial(self.add_file, event.mimeData().urls()[0].path()))
     
 if __name__ == "__main__":
     try:

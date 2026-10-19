@@ -7,7 +7,7 @@ import datasets as ds
 import numpy as np
 import sys
 
-from skimage.transform import ProjectiveTransform
+from skimage.transform import ProjectiveTransform, matrix_transform
 from scipy.signal import find_peaks
 
 class ModeView(file_viewer.FileView):
@@ -18,15 +18,47 @@ class ModeView(file_viewer.FileView):
     def _get_transformation(self):
         network = "NetW350L05D150"
         self._net_x, self._net_y = np.genfromtxt(
-            f"C:/Users/jbd17/OneDrive - Imperial College London/PhD/Data/ML/20240126_Toriel120_lls_tests_scans/{network}_coordinates.csv",
+            rf"C:\Users\jbd17\Box\Complex Nanophotonics\LASING PROJECTS\ML\Archive\jakubs_old_data\20240126_Toriel120_lls_tests_scans/{network}_coordinates.csv",
             unpack=True
         )
         matrix = np.genfromtxt(
-            f"C:/Users/jbd17/OneDrive - Imperial College London/PhD/Data/ML/20240126_Toriel120_lls_tests_scans/{network}_transform.csv",
+            rf"C:\Users\jbd17\Box\Complex Nanophotonics\LASING PROJECTS\ML\Archive\jakubs_old_data\20240126_Toriel120_lls_tests_scans/{network}_transform.csv",
         )
         self._tform3 = ProjectiveTransform(matrix=matrix)
 
+    def define_params(self):
+        pzp.param.checkbox(self, 'log', 0)(None)
+        mode_select = pzp.param.spinbox(self, 'mode_select', 0)(None)
+
+        def show_mode():
+            i = self.params['mode_select'].value
+            self._controls[0].setRegion(self._modes[i])
+        mode_select.changed.connect(show_mode)
+
+    def define_actions(self):
+        @pzp.action.define(self, "Add mode")
+        def add_mode(self):
+            min, max = self._controls[0].getRegion()
+            self._modes.append([min, max])
+            self.params['mode_select'].set_value(len(self._modes)-1)
+            self._colour_modes()
+
+        @pzp.action.define(self, "Delete mode")
+        def remove_mode(self):
+            i = self.params['mode_select'].value
+            del self._modes[i]
+            self._colour_modes()
+            if len(self._modes) <= i:
+                self.params['mode_select'].set_value(i-1)
+            else:
+                self.params['mode_select'].set_value()
+
+        @pzp.action.define(self, "Save modes")
+        def save_modes(self):
+            np.savetxt(self._filename.replace('.pdhs', '.modes'), self._modes)
+
     def set_file(self, filename):
+        self._filename = filename
         data = ds.load(filename)
         for key in data.keys():
             setattr(self, "_"+key, data[key])
@@ -34,7 +66,15 @@ class ModeView(file_viewer.FileView):
         self._scatters[5].setData(self._peak_wl, self._peak_i)
         self._scatters[1].setData(self._peak_wl, self._peak_i)
         self._lines[0].setData(np.amax(self._spectra, 0))
+        if hasattr(self, '_i_clicked'):
+            delattr(self, '_i_clicked')
         self._region_changed()
+
+        try:
+            self._modes = list(np.genfromtxt(filename.replace('.pdhs', '.modes')))
+            self._colour_modes()
+        except FileNotFoundError:
+            self._modes = []
 
     def custom_layout(self):
         layout = QtWidgets.QGridLayout()
@@ -68,7 +108,7 @@ class ModeView(file_viewer.FileView):
         r=2
         ax[2].addItem(circle := pg.QtWidgets.QGraphicsEllipseItem(-r, -r, r*2, r*2))  # x, y, width, height
         circle.setPen(pg.mkPen((255, 255, 0, 150)))
-        result = self._tform3._apply_mat(np.vstack((self._net_x, self._net_y)).T, self._tform3.params).T
+        result = matrix_transform(np.vstack((self._net_x, self._net_y)).T, self._tform3.params).T
         ax[2].plot(result[1], result[0], pen=(255, 255, 255, 80))
 
         roi_item = pg.ROI([0, 0], [3, 7], pen=(255, 255, 0, 200))
@@ -86,10 +126,11 @@ class ModeView(file_viewer.FileView):
         self._controls = [lr, lr2, target, circle, roi_item, lr3]
         scatter.sigClicked.connect(self._point_clicked)
         lr.sigRegionChanged.connect(self._region_changed)
+        self.params['log'].changed.connect(self._region_changed)
         roi_item.sigRegionChanged.connect(self._roi_changed)
 
         return layout
-    
+
     def _point_clicked(self, scatter, points, event):
         self._i_clicked = i = points[0].index()
         counts = self._spectra[self._spectra_i[i]]
@@ -104,15 +145,16 @@ class ModeView(file_viewer.FileView):
         self._scatters[2].setData(peaks, counts[peaks])
         self._scatters[3].setData(peaks, counts[peaks])
         self._roi_changed()
-    
+
     def _region_changed(self):
         min, max = self._controls[0].getRegion()
         self._controls[1].setRegion((min, max))
         self._controls[5].setRegion((min, max))
         values = np.zeros((126, 256))
         self._mask = mask = (self._peak_wl >= min) & (self._peak_wl <= max)
-        values[self._peak_p[:, 1][mask], self._peak_p[:, 0][mask]] += self._peak_i[mask]
-        
+        add = np.log(self._peak_i[mask]) if self.params['log'].value else self._peak_i[mask]
+        values[self._peak_p[:, 1][mask], self._peak_p[:, 0][mask]] += add
+
         if np.sum(mask):
             x = (np.concatenate([
                 np.vstack([np.arange(len(self._spectra[0]))[::8]]*len(self._spectra_i[mask])),
@@ -163,11 +205,34 @@ class ModeView(file_viewer.FileView):
         else:
             self._lines[5].setData([], [])
 
+    _colours = [
+        [ 31, 119, 180, 255],
+        [255, 127,  14, 255],
+        [ 44, 160,  44, 255],
+        [214,  39,  40, 255],
+        [148, 103, 189, 255],
+        [140,  86,  75, 255],
+        [227, 119, 194, 255],
+        [127, 127, 127, 255],
+        [188, 189,  34, 255],
+        [ 23, 190, 207, 255]
+    ]
+
+    def _colour_modes(self):
+        brush = np.zeros((len(self._peak_wl), 4))
+        brush[:] = (100, 100, 150, 255)
+        for i, mode in enumerate(self._modes):
+            min, max = mode
+            mask = (self._peak_wl >= min) & (self._peak_wl <= max)
+            brush[mask] = self._colours[i%len(self._colours)]
+        self._scatters[5].setBrush(brush)
+
 if __name__ == "__main__":
     try:
         filename = sys.argv[1]
     except IndexError:
         filename = 'test.hs'
+        filename = R"C:\Users\jbd17\OneDrive - Imperial College London\PhD\Data\ML\20240126_Toriel120_lls_tests_scans\compiled_data\HS_20240127_Toriel120_NetW350L05D150_p220.pdhs"
 
     app = pzp.QApp([])
     main = file_viewer.FilesViewer(filename, ModeView)
