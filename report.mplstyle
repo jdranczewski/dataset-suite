@@ -25,4 +25,3 @@ pdf.fonttype: 42
 svg.fonttype: none
 
 savefig.dpi: 300
-savefig.facecolor: none
